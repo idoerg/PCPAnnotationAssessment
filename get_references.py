@@ -58,12 +58,15 @@ def pmids_from_gaf(gaf_file):
     return list(pmids.keys()), pmid_go, go_terms, pmid_prot
 
 
-def remove_high_throughput_papers(pmid_go, pmid_prot):
+def remove_high_throughput_papers(pmid_go, pmid_prot, threshold=100):
     
-    for pmid in pmid_prot.keys():
-        if (len(pmid_prot[pmid]) >= 50):
-            del pmid_go[pmid]
-            del pmid_prot[pmid]
+    pmid_prot2 = {}
+    pmid_go2 = {}
+    for pmid in pmid_prot:
+        if (len(pmid_prot[pmid]) < threshold):
+            pmid_go2[pmid] = pmid_go[pmid]
+            pmid_prot2[pmid] = pmid_prot[pmid]
+    return pmid_go2, pmid_prot2
 
 def pmid2doi(pmid_list):
     """
@@ -288,23 +291,29 @@ def get_stats(pmid_pmid, pmid_go, go_terms):
     
     
 if __name__ == "__main__":
-    
+
+    threshold = int(sys.argv[1]) #Threhsold for high-thorughput papers
+
     pmids,pmid_go, go_terms, pmid_prot = pmids_from_gaf("gene_association.goa_dicty")
     #pmid_dois = pmid2doi(pmids)  
     #get_references(pmid_dois)
     
-    remove_high_throughput_papers(pmid_go, pmid_prot)
-    
-    pmid_pmid = cPickle.load(open("/home/jomaao/GitHub/PCPAnnotationAssessment/pmid_pmid"))
+    print len(pmid_go), len(pmid_prot)
+    # remove_high_throughput_papers(pmid_go, pmid_prot)
+    pmid_go,  pmid_prot = remove_high_throughput_papers(pmid_go, pmid_prot, threshold)
+    print len(pmid_go), len(pmid_prot)
+
+    pmid_pmid = cPickle.load(open("/home/idoerg/soft/PCPAnnotationAssessment/pmid_pmid"))
     
     prot_prot = create_prot_prot_network(pmid_go)
+    cPickle.dump(prot_prot, open("prot_prot.pik","w"))
     pos = nx.graphviz_layout(prot_prot, prog='neato', args='')
     nx.draw(prot_prot,pos,node_size=10,alpha=0.5,node_color="red", with_labels=False)
-    plt.savefig("/home/jomaao/GitHub/PCPAnnotationAssessment/prot_prot.png")
+    plt.savefig("/home/idoerg/soft/PCPAnnotationAssessment/prot_prot_%d.png" % threshold)
     
     pcp = create_pcp_network(pmid_pmid,pmid_go)
     pos = nx.graphviz_layout(pcp, prog='neato', args='')
     nx.draw(pcp,pos,node_size=10,alpha=0.5,node_color="red", with_labels=False)
-    plt.savefig("/home/jomaao/GitHub/PCPAnnotationAssessment/prot_citation_prot.png")
+    plt.savefig("/home/idoerg/soft/PCPAnnotationAssessment/prot_citation_prot_%d.png" % threshold)
     
     get_stats(pmid_pmid, pmid_go, go_terms)
